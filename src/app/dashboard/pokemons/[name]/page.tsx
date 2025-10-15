@@ -1,24 +1,36 @@
-import { Pokemon } from "@/pokemons";
+import { Pokemon, PokemonsResponse, SimplePokemon } from "@/pokemons";
 import { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
 interface Props {
-    params: { id: string }
+    params: { name: string }
+}
+
+const getPokemons = async (limit = 151, offset=0) : Promise<SimplePokemon[]> =>{
+   const data: PokemonsResponse = await fetch( `https://pokeapi.co/api/v2/pokemon/?limit=${limit}&offset=${offset}` )
+    .then( res => res.json() );
+
+    const pokemons = data.results.map( pokemon => ({
+      id: pokemon.url.split('/').at(-2)!,
+      name: pokemon.name,
+    }));
+    
+    return pokemons;
 }
 
 export async function generateStaticParams() {
-  const statics151Pokemons = Array.from({ length: 151 }).map( (v, i) => `${ i + 1}`);
+  const pokemons = await getPokemons();
 
-  return statics151Pokemons.map( id => ({
-    id: id
+  return pokemons.map( ({ name }) => ({
+    name: name
   }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     try {
-        const { id, name } = await getPokemon(params.id)
+        const { id, name } = await getPokemon(params.name)
 
         return {
             title: `#${id} - ${name}`,
@@ -33,9 +45,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 }
 
-const getPokemon = async(id:string): Promise<Pokemon> => {
+const getPokemon = async(name:string): Promise<Pokemon> => {
     try {
-        const pokemon = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`, {
+        const pokemon = await fetch(`https://pokeapi.co/api/v2/pokemon/${name}`, {
             'cache': 'force-cache'
         }).then( res => res.json() );
 
@@ -48,7 +60,7 @@ const getPokemon = async(id:string): Promise<Pokemon> => {
 
 export default async function PokemonPage({ params }: Props) {
 
-  const pokemon = await getPokemon(params.id);
+  const pokemon = await getPokemon(params.name);
 
   return (
     <div className="flex mt-5 flex-col items-center text-slate-800">
@@ -66,7 +78,6 @@ export default async function PokemonPage({ params }: Props) {
               className="mb-5"
             />
 
-
             <div className="flex flex-wrap">
               {
                 pokemon.moves.map(move => (
@@ -76,6 +87,7 @@ export default async function PokemonPage({ params }: Props) {
             </div>
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-4 px-2 w-full">
 
           <div className="flex flex-col items-start justify-center rounded-2xl bg-white bg-clip-border px-3 py-4  drop-shadow-lg ">
